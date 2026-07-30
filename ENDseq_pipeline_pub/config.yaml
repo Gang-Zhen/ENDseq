@@ -1,0 +1,10 @@
+
+samples:
+  - sample1
+  - sample2
+
+minReadLength: 32
+
+genomeIndex: "/Users/zheng3/Documents/Software/Genome/Index/hg19/bowtie2/genome"
+genome_mm10_Index: "/Users/zheng3/Documents/Software/Genome/Index/mm10/bowtie2/genome"
+

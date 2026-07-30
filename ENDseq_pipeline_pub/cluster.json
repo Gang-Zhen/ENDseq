@@ -1,0 +1,25 @@
+
+__default__:
+    mem: 24000
+    partition: norm
+    n: 1
+    time: 03:00:00
+    ncpus: 1
+    extra: "--gres=lscratch:5"
+trimmo:
+    ncpus: 10
+fastqc_raw:
+    ncpus: 10
+    extra: "--gres=lscratch:50"
+fastqc_clean:
+    ncpus: 10
+    extra: "--gres=lscratch:50"
+bowtie2:
+    extra: "--gres=lscratch:60"
+    mem: 50000
+    ncpus: 24
+mm10_bowtie2:
+    extra: "--gres=lscratch:60"
+    mem: 50000
+    ncpus: 24
+
