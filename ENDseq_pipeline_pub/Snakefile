@@ -58,8 +58,8 @@ rule bed_2_bedgraph:
         """
 
 rule bedgraph_2_bw:
-    input: "data/bedGraph/{sample}.norm.{strand}.bedgraph"
-    output: "data/bigwig/{sample}.norm.{strand}.bw"
+    input: "data/bedGraph/{sample}.{strand}.bedgraph"
+    output: "data/bigwig/{sample}.{strand}.bw"
     shell:
         """
         bedGraphToBigWig {input} /data_path/hg19.chrom.sizes.txt {output}
