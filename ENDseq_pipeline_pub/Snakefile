@@ -8,20 +8,18 @@ import os
 rule all:
     input:
         expand("data/bam/{sample}.bam", sample = config['samples']),
-        expand("data/bam/{sample}.mm10.bam", sample = config['samples'])
         expand("data/bed/{sample}.bed", sample = config['samples']),
-        expand("data/bed/{sample}.ENDseq_SpikeIn.bed", sample = config['samples']),
-        expand("data/bigwig/{sample}.norm.{strand}.bw", sample = config['samples'], strand = ["plus", "minus"])
+        expand("data/bigwig/{sample}.{strand}.bw", sample = config['samples'], strand = ["plus", "minus"])
 
 rule trimmo:
-    input: "/Users/zheng3/Documents/Analysis/Raphael/data/{sample}.fastq.gz"
+    input: "/Path_to_your_data/{sample}.fastq.gz"
     output: "clean/{sample}.fastq.gz"
     threads: 8
     params:
         min_len = config['minReadLength']
     shell:
         """
-        trimmomatic SE -threads {threads} {input} {output} ILLUMINACLIP:/data/zheng3/software/adapers/Trimmomatic/TruSeq3-SE.fa:2:30:7 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:{params.min_len}
+        trimmomatic SE -threads {threads} {input} {output} ILLUMINACLIP:/Path_to_your_adaptor_file/adapers/Trimmomatic/TruSeq3-SE.fa:2:30:7 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:{params.min_len}
         """
 
 rule bowtie2:
@@ -38,59 +36,25 @@ rule bowtie2:
         rm {wildcards.sample}.sam
         """
 
-rule mm10_bowtie2:
-    input: "clean/{sample}.fastq.gz"
-    output: "data/bam/{sample}.mm10.bam"
-    threads: 8
-    log: "logs/{sample}.bowtie2.mm10.log"
-    params:
-        index = config['genome_mm10_Index']
-    shell:
-        """
-        bowtie2 -N 1 -L 25 -p {threads} -x {params.index} -U {input} -S 2> {log} {wildcards.sample}.mm10.sam
-        samtools sort -@ {threads} -T {wildcards.sample}.mm10 -o {output} {wildcards.sample}.mm10.sam
-        rm {wildcards.sample}.mm10.sam
-        """
-
 rule bam_2_bed:
     input: "data/bam/{sample}.bam"
     output: "data/bed/{sample}.bed"
     shell:
         """
-        samtools view -bq 3 {input} | bedtools bamtobed -i - | bedtools intersect -v -a - -b /Users/zheng3/Documents/Software/Genome/annotation/hg19.BLACKLISTED.MERGED.bed | grep -v 'hap' | grep -v 'random' | grep -v 'chrUn' | grep -v 'chrM' > {output}
+        samtools view -bq 3 {input} | bedtools bamtobed -i - | bedtools intersect -v -a - -b /data_path/hg19.BLACKLISTED.MERGED.bed | grep -v 'hap' | grep -v 'random' | grep -v 'chrUn' | grep -v 'chrM' > {output}
         """
 
-rule bed_for_mm10:
-    input: "data/bam/{sample}.mm10.bam"
-    output: "data/bed/{sample}.aligned_2_mm10.bed"
-    shell:
-        """
-        samtools view -bq 3 {input} | bedtools bamtobed -i - | bedtools intersect -v -a - -b /Users/zheng3/Documents/Software/Genome/annotation/mm10.BL.bed | grep -v 'hap' | grep -v 'random' | grep -v 'chrUn' | grep -v 'chrM' > {output}
-        """
-
-rule Spike_In_counts:
-    input: "data/bed/{sample}.aligned_2_mm10.bed"
-    output: "data/bed/{sample}.ENDseq_SpikeIn.bed"
-    shell:
-        """
-        bedtools coverage -a /Users/zheng3/Documents/Software/Genome/annotation/ENDseq_spikein.bed -b {input} > {output}
-        """
-
-rule SpikeIn_norm_bedgraph:
-    input:
-        reads = "data/bed/{sample}.bed",
-        spike_counts = "data/bed/{sample}.ENDseq_SpikeIn.bed"
+rule bed_2_bedgraph:
+    input: "data/bed/{sample}.bed"
     output:
-        plus = "data/bedGraph/{sample}.norm.plus.bedgraph",
-        minus = "data/bedGraph/{sample}.norm.minus.bedgraph"
+        plus = "data/bedGraph/{sample}.plus.bedgraph",
+        minus = "data/bedGraph/{sample}.minus.bedgraph"
     shell:
         """
-        rpm_hs=$(wc -l {input.reads} | cut -f 2 -d ' ' | awk '{{printf "%f\\n", $1/1000000.0}}')
-        rpm_mm=$(cat {input.spike_counts} | awk '{{print $4 "\\t"}}')
-        spike_in=$(echo "$rpm_mm / $rpm_hs" | bc -l)
-        spike_in=$(echo "1 / $spike_in" | bc -l)
-        bedtools genomecov -bg -scale $spike_in -strand + -i {input.reads} -g /Users/zheng3/Documents/Software/Genome/annotation/hg19.chrom.sizes.txt | bedtools sort -i - > {output.plus}
-        bedtools genomecov -bg -scale $spike_in -strand - -i {input.reads} -g /Users/zheng3/Documents/Software/Genome/annotation/hg19.chrom.sizes.txt | awk '{{printf "%s\\t%s\\t%s\\t%s\\n",$1,$2,$3,-1*$4}}' | bedtools sort -i - > {output.minus}
+        rpm=$(wc -l {input} | cut -f 1 -d ' ' | awk '{{printf "%f\\n", $1/1000000.0}}')
+        rpm=$(echo "1 / $rpm" | bc -l)
+        bedtools genomecov -bg -scale $rpm -strand + -i {input} -g /data_path/hg19.chrom.sizes.txt | bedtools sort -i - > {output.plus}
+        bedtools genomecov -bg -scale $rpm -strand - -i {input} -g /data_path/hg19.chrom.sizes.txt | bedtools sort -i - > {output.minus}
         """
 
 rule bedgraph_2_bw:
@@ -98,7 +62,7 @@ rule bedgraph_2_bw:
     output: "data/bigwig/{sample}.norm.{strand}.bw"
     shell:
         """
-        bedGraphToBigWig {input} /Users/zheng3/Documents/Software/Genome/annotation/hg19.chrom.sizes.txt {output}
+        bedGraphToBigWig {input} /data_path/hg19.chrom.sizes.txt {output}
         """
 
 
